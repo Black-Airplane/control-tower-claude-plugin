@@ -103,15 +103,16 @@ export function extractUploadCapability(toolResponse) {
   return { ...capability, uploadUrl: url.toString() };
 }
 
-export function mcpResult(result, isError = false) {
+export function mcpResult(result) {
+  const content = [{ type: 'text', text: JSON.stringify(result) }];
+
   return {
     hookSpecificOutput: {
       hookEventName: 'PostToolUse',
-      updatedMCPToolOutput: {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-        ...(isError ? {} : { structuredContent: result }),
-        isError,
-      },
+      // Claude Code stores an MCP tool's output as the content-block array itself.
+      // Returning a CallToolResult wrapper here causes Claude Code 2.1.207 to call
+      // Array#reduce on an object while rendering the replacement.
+      updatedMCPToolOutput: content,
     },
   };
 }

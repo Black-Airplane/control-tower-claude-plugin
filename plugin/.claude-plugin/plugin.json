@@ -1,6 +1,6 @@
 {
   "name": "control-tower",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Upload images pasted into Claude Code directly to Control Tower tasks.",
   "author": {
     "name": "Black Airplane"

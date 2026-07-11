@@ -6,6 +6,7 @@ import test from 'node:test';
 import {
   extractUploadCapability,
   findPastedImage,
+  mcpResult,
   parseImageReference,
   runHook,
 } from '../plugin/lib/image-bridge.mjs';
@@ -93,7 +94,25 @@ test('uploads the original bytes and replaces the MCP result', async () => {
 
   assert.equal(request.url, 'https://control.example/mcp/task-image-uploads/7');
   assert.equal(request.options.headers.Authorization, 'Bearer secret');
-  assert.equal(output.hookSpecificOutput.updatedMCPToolOutput.structuredContent.status, 'attached');
+  const content = output.hookSpecificOutput.updatedMCPToolOutput;
+  assert.ok(Array.isArray(content));
+  assert.equal(JSON.parse(content[0].text).status, 'attached');
+});
+
+test('returns the MCP content-block array expected by Claude Code', () => {
+  const output = mcpResult({ status: 'attachment_failed', message: 'Try again.' });
+  const content = output.hookSpecificOutput.updatedMCPToolOutput;
+
+  assert.deepEqual(content, [
+    {
+      type: 'text',
+      text: JSON.stringify({ status: 'attachment_failed', message: 'Try again.' }),
+    },
+  ]);
+  assert.equal(
+    content.reduce((length, block) => length + (block.type === 'text' ? block.text.length : 0), 0),
+    content[0].text.length
+  );
 });
 
 test('fails clearly for missing and spoofed images', async () => {

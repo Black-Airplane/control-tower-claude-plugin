@@ -14,5 +14,5 @@ try {
   process.stdout.write(JSON.stringify(output));
 } catch (error) {
   const message = error instanceof Error ? error.message : 'The pasted image could not be attached.';
-  process.stdout.write(JSON.stringify(mcpResult({ status: 'attachment_failed', message }, true)));
+  process.stdout.write(JSON.stringify(mcpResult({ status: 'attachment_failed', message })));
 }

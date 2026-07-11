@@ -18,6 +18,15 @@ claude mcp add --transport http control-tower https://YOUR-CONTROL-TOWER/mcp/con
 
 Open `/mcp` in Claude Code, authenticate Control Tower, then run `/reload-plugins`.
 
+Already installed? Update to the latest bridge, then reload it:
+
+```bash
+claude plugin marketplace update black-airplane
+claude plugin update control-tower@black-airplane
+```
+
+Run `/reload-plugins` after the update. Existing Claude Code sessions keep using the previous plugin version until they are reloaded.
+
 Paste an image into Claude Code and ask: “Attach Image #1 to task 47.” Images go to the task's Media & Files gallery by default. Ask to put the image “in the description” to embed it in the task body as well.
 
 ## Security
