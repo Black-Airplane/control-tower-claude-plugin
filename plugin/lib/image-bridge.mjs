@@ -91,7 +91,7 @@ export function extractUploadCapability(toolResponse) {
 
   const capability = visit(toolResponse);
   if (!capability || typeof capability.upload_url !== 'string' || typeof capability.upload_token !== 'string') {
-    throw new Error('Control Tower did not return an image upload capability. Update the MCP server and plugin, then retry.');
+    throw new Error('Control Tower did not provide an image upload capability in MCP content metadata. Update the MCP server and plugin, then retry.');
   }
 
   const url = new URL(capability.upload_url);

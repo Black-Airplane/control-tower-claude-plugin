@@ -31,4 +31,4 @@ Paste an image into Claude Code and ask: “Attach Image #1 to task 47.” Image
 
 ## Security
 
-The hook runs only after the `control-tower` MCP server's `attach-task-image` tool succeeds. It reads only the requested `Image #N` from the current Claude Code transcript and sends the original bytes to Control Tower using a two-minute, one-use upload capability. Image bytes and upload tokens are never logged.
+The hook runs only after the `control-tower` MCP server's `attach-task-image` tool succeeds. It reads only the requested `Image #N` from the current Claude Code transcript and sends the original bytes to Control Tower using a two-minute, one-use upload capability. The capability travels in MCP content-block metadata rather than rendered model text. Image bytes and upload tokens are never logged.

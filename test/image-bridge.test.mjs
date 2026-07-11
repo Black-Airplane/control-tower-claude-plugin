@@ -55,13 +55,19 @@ test('resolves the requested image id across turns and formats', async () => {
   assert.deepEqual(image.bytes, JPEG);
 });
 
-test('extracts upload secrets from nested MCP metadata and rejects insecure URLs', () => {
-  const capability = extractUploadCapability({
-    mcpMeta: { _meta: { 'control-tower/task-image-upload': {
-      upload_url: 'https://control.example/mcp/task-image-uploads/7',
-      upload_token: 'secret',
-    } } },
-  });
+test('extracts upload secrets from MCP content metadata and rejects insecure URLs', () => {
+  const capability = extractUploadCapability([
+    {
+      type: 'text',
+      text: JSON.stringify({ status: 'upload_pending' }),
+      _meta: {
+        'control-tower/task-image-upload': {
+          upload_url: 'https://control.example/mcp/task-image-uploads/7',
+          upload_token: 'secret',
+        },
+      },
+    },
+  ]);
   assert.equal(capability.upload_token, 'secret');
 
   assert.throws(() => extractUploadCapability({
@@ -85,11 +91,19 @@ test('uploads the original bytes and replaces the MCP result', async () => {
   const output = await runHook({
     transcript_path: file,
     tool_input: { image_ref: 'Image #4' },
-    tool_response: { mcpMeta: { _meta: { 'control-tower/task-image-upload': {
-      upload_url: 'https://control.example/mcp/task-image-uploads/7',
-      upload_token: 'secret',
-      filename: 'bug.png',
-    } } } },
+    tool_response: [
+      {
+        type: 'text',
+        text: JSON.stringify({ status: 'upload_pending' }),
+        _meta: {
+          'control-tower/task-image-upload': {
+            upload_url: 'https://control.example/mcp/task-image-uploads/7',
+            upload_token: 'secret',
+            filename: 'bug.png',
+          },
+        },
+      },
+    ],
   }, fakeFetch);
 
   assert.equal(request.url, 'https://control.example/mcp/task-image-uploads/7');
