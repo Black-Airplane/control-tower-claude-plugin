@@ -1,0 +1,19 @@
+{
+  "name": "black-airplane",
+  "owner": {
+    "name": "Black Airplane"
+  },
+  "description": "Official Claude Code integrations for Black Airplane's Control Tower.",
+  "plugins": [
+    {
+      "name": "control-tower",
+      "source": "./plugin",
+      "description": "Adds first-class pasted-image attachments to the Control Tower MCP integration.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Black Airplane"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

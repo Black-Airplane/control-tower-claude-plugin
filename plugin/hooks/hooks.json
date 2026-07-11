@@ -1,0 +1,19 @@
+{
+  "description": "Completes Control Tower task image uploads with the original Claude Code pasted-image bytes.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "mcp__control-tower__attach-task-image",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/upload-task-image.mjs"],
+            "timeout": 60,
+            "statusMessage": "Attaching pasted image to Control Tower…"
+          }
+        ]
+      }
+    ]
+  }
+}
