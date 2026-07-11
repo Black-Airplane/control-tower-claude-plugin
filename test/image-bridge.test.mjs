@@ -1,13 +1,18 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import {
+  BRIDGE_ENCRYPTION,
+  BRIDGE_PUBLIC_KEY_INPUT,
+  cleanupImageBridge,
   extractUploadCapability,
   findPastedImage,
   mcpResult,
   parseImageReference,
+  prepareImageBridge,
   runHook,
 } from '../plugin/lib/image-bridge.mjs';
 
@@ -77,8 +82,45 @@ test('extracts upload secrets from MCP content metadata and rejects insecure URL
   }), /insecure/);
 });
 
+test('prepares an ephemeral bridge key without changing the model-provided fields', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'control-tower-bridge-'));
+  const output = prepareImageBridge({
+    tool_use_id: 'toolu_prepare_1',
+    tool_input: { task_id: 47, image_ref: 'Image #4', placement: 'attachment' },
+  }, directory);
+
+  const hook = output.hookSpecificOutput;
+  assert.equal(hook.hookEventName, 'PreToolUse');
+  assert.equal(hook.permissionDecision, 'allow');
+  assert.equal(hook.updatedInput.task_id, 47);
+  assert.equal(hook.updatedInput.image_ref, 'Image #4');
+  assert.match(hook.updatedInput[BRIDGE_PUBLIC_KEY_INPUT], /BEGIN PUBLIC KEY/);
+
+  const keyFile = path.join(directory, 'bridge-keys', 'toolu_prepare_1.pem');
+  assert.match(await fs.readFile(keyFile, 'utf8'), /BEGIN PRIVATE KEY/);
+  assert.equal((await fs.stat(keyFile)).mode & 0o777, 0o600);
+
+  cleanupImageBridge({ tool_use_id: 'toolu_prepare_1' }, directory);
+  await assert.rejects(() => fs.readFile(keyFile));
+});
+
 test('uploads the original bytes and replaces the MCP result', async () => {
   const file = await transcript([imageRecord([4], [{ mimeType: 'image/png', bytes: PNG }])]);
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'control-tower-bridge-'));
+  const toolInput = { image_ref: 'Image #4' };
+  const prepared = prepareImageBridge({
+    tool_use_id: 'toolu_upload_1',
+    tool_input: toolInput,
+  }, directory);
+  const publicKey = prepared.hookSpecificOutput.updatedInput[BRIDGE_PUBLIC_KEY_INPUT];
+  const encryptedToken = crypto.publicEncrypt(
+    {
+      key: publicKey,
+      padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+      oaepHash: 'sha1',
+    },
+    Buffer.from('secret')
+  ).toString('base64');
   let request;
   const fakeFetch = async (url, options) => {
     request = { url, options };
@@ -89,28 +131,50 @@ test('uploads the original bytes and replaces the MCP result', async () => {
   };
 
   const output = await runHook({
+    tool_use_id: 'toolu_upload_1',
     transcript_path: file,
-    tool_input: { image_ref: 'Image #4' },
-    tool_response: [
-      {
-        type: 'text',
-        text: JSON.stringify({ status: 'upload_pending' }),
-        _meta: {
-          'control-tower/task-image-upload': {
-            upload_url: 'https://control.example/mcp/task-image-uploads/7',
-            upload_token: 'secret',
-            filename: 'bug.png',
-          },
-        },
+    tool_input: toolInput,
+    tool_response: JSON.stringify({
+      status: 'upload_pending',
+      'control-tower/task-image-upload': {
+        upload_url: 'https://control.example/mcp/task-image-uploads/7',
+        encrypted_upload_token: encryptedToken,
+        encryption: BRIDGE_ENCRYPTION,
+        filename: 'bug.png',
       },
-    ],
-  }, fakeFetch);
+    }),
+  }, fakeFetch, directory);
 
   assert.equal(request.url, 'https://control.example/mcp/task-image-uploads/7');
   assert.equal(request.options.headers.Authorization, 'Bearer secret');
   const content = output.hookSpecificOutput.updatedMCPToolOutput;
   assert.ok(Array.isArray(content));
   assert.equal(JSON.parse(content[0].text).status, 'attached');
+  await assert.rejects(() => fs.readFile(path.join(directory, 'bridge-keys', 'toolu_upload_1.pem')));
+});
+
+test('deletes the ephemeral key when an encrypted capability cannot be decrypted', async () => {
+  const file = await transcript([imageRecord([5], [{ mimeType: 'image/png', bytes: PNG }])]);
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'control-tower-bridge-'));
+  prepareImageBridge({
+    tool_use_id: 'toolu_bad_token_1',
+    tool_input: { image_ref: 'Image #5' },
+  }, directory);
+
+  await assert.rejects(() => runHook({
+    tool_use_id: 'toolu_bad_token_1',
+    transcript_path: file,
+    tool_input: { image_ref: 'Image #5' },
+    tool_response: JSON.stringify({
+      'control-tower/task-image-upload': {
+        upload_url: 'https://control.example/mcp/task-image-uploads/8',
+        encrypted_upload_token: 'not-valid-ciphertext',
+        encryption: BRIDGE_ENCRYPTION,
+      },
+    }),
+  }, undefined, directory), /could not decrypt/);
+
+  await assert.rejects(() => fs.readFile(path.join(directory, 'bridge-keys', 'toolu_bad_token_1.pem')));
 });
 
 test('returns the MCP content-block array expected by Claude Code', () => {

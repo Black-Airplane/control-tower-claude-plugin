@@ -1,6 +1,20 @@
 {
   "description": "Completes Control Tower task image uploads with the original Claude Code pasted-image bytes.",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__control-tower__attach-task-image",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/prepare-task-image.mjs"],
+            "timeout": 10,
+            "statusMessage": "Securing the Control Tower image upload…"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "mcp__control-tower__attach-task-image",
@@ -11,6 +25,19 @@
             "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/upload-task-image.mjs"],
             "timeout": 60,
             "statusMessage": "Attaching pasted image to Control Tower…"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "mcp__control-tower__attach-task-image",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/cleanup-task-image.mjs"],
+            "timeout": 10
           }
         ]
       }

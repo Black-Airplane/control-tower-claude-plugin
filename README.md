@@ -31,4 +31,4 @@ Paste an image into Claude Code and ask: “Attach Image #1 to task 47.” Image
 
 ## Security
 
-The hook runs only after the `control-tower` MCP server's `attach-task-image` tool succeeds. It reads only the requested `Image #N` from the current Claude Code transcript and sends the original bytes to Control Tower using a two-minute, one-use upload capability. The capability travels in MCP content-block metadata rather than rendered model text. Image bytes and upload tokens are never logged.
+Before the MCP call, the plugin creates an ephemeral encryption keypair and adds only the public key to the tool input. Control Tower encrypts the two-minute, one-use upload token to that key. After the tool succeeds, the plugin reads only the requested `Image #N` from the current transcript, decrypts the token locally, deletes the private key, and sends the original bytes directly to Control Tower. Image bytes, private keys, and plaintext upload tokens are never logged or placed in model-visible text.
