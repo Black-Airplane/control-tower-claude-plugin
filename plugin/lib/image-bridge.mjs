@@ -19,7 +19,7 @@ export async function findPastedImage(transcriptPath, imageId) {
   let found = null;
 
   for await (const line of lines) {
-    if (!line.includes('imagePasteIds') || !line.includes('"type":"image"')) continue;
+    if (!line.includes('imagePasteIds')) continue;
 
     let record;
     try {

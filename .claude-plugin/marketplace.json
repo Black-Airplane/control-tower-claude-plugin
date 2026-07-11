@@ -9,10 +9,11 @@
       "name": "control-tower",
       "source": "./plugin",
       "description": "Adds first-class pasted-image attachments to the Control Tower MCP integration.",
-      "version": "1.0.0",
       "author": {
         "name": "Black Airplane"
       },
+      "repository": "https://github.com/Black-Airplane/control-tower-claude-plugin",
+      "license": "MIT",
       "category": "Productivity"
     }
   ]
